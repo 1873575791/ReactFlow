@@ -24,7 +24,7 @@ function Layout() {
             ))}
         </nav>
       </header>
-      <main className="h-[calc(100vh-72px)]">
+      <main className="h-[calc(100vh-73px)]">
         <Outlet />
       </main>
     </div>

@@ -9,6 +9,9 @@ const CONFIG = {
   enemySpeed: 0.03,
   spawnInterval: 2000,
   maxEnemies: 10,
+  jumpForce: 0.35,
+  gravity: 0.012,
+  playerHeight: 1.6,
 };
 
 // 移动方向状态
@@ -25,8 +28,10 @@ const FPSGame3D = () => {
   const cameraRef = useRef(null);
   const rendererRef = useRef(null);
   const playerRef = useRef({ yaw: 0, pitch: 0 });
+  const playerPhysicsRef = useRef({ velocityY: 0, isGrounded: true });
   const bulletsRef = useRef([]);
   const enemiesRef = useRef([]);
+  const obstaclesRef = useRef([]);
   const animationIdRef = useRef(null);
   const spawnIntervalRef = useRef(null);
 
@@ -98,6 +103,9 @@ const FPSGame3D = () => {
     ceiling.position.y = 10;
     scene.add(ceiling);
 
+    // 添加相机到场景
+    scene.add(camera);
+
     // 墙壁
     const wallMaterial = new THREE.MeshStandardMaterial({
       color: 0x374151,
@@ -117,6 +125,7 @@ const FPSGame3D = () => {
       wall.position.set(...pos);
       wall.rotation.set(...rot);
       scene.add(wall);
+      obstaclesRef.current.push(wall);
     });
 
     // 添加一些障碍物（箱子）
@@ -133,18 +142,8 @@ const FPSGame3D = () => {
       box.castShadow = true;
       box.receiveShadow = true;
       scene.add(box);
+      obstaclesRef.current.push(box);
     }
-
-    // 准星
-    const crosshairGeometry = new THREE.RingGeometry(0.02, 0.03, 32);
-    const crosshairMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00ff00,
-      side: THREE.DoubleSide,
-    });
-    const crosshair = new THREE.Mesh(crosshairGeometry, crosshairMaterial);
-    crosshair.position.set(0, 0, -1);
-    camera.add(crosshair);
-    scene.add(camera);
 
     // 窗口大小调整
     const handleResize = () => {
@@ -186,6 +185,13 @@ const FPSGame3D = () => {
           break;
         case "KeyD":
           moveState.right = true;
+          break;
+        case "Space":
+          // 跳跃
+          if (playerPhysicsRef.current.isGrounded) {
+            playerPhysicsRef.current.velocityY = CONFIG.jumpForce;
+            playerPhysicsRef.current.isGrounded = false;
+          }
           break;
         default:
           break;
@@ -278,8 +284,9 @@ const FPSGame3D = () => {
 
     bullet.position.copy(cameraRef.current.position);
 
-    const direction = new THREE.Vector3(0, 0, -1);
-    direction.applyQuaternion(cameraRef.current.quaternion);
+    // 使用 getWorldDirection 获取相机的精确朝向
+    const direction = new THREE.Vector3();
+    cameraRef.current.getWorldDirection(direction);
 
     bullet.userData.velocity = direction.multiplyScalar(CONFIG.bulletSpeed);
     bullet.userData.life = 100;
@@ -384,12 +391,120 @@ const FPSGame3D = () => {
       if (moveState.left) direction.sub(right);
 
       if (direction.length() > 0) {
-        direction.normalize().multiplyScalar(CONFIG.playerSpeed);
-        camera.position.add(direction);
+        direction.normalize();
+
+        const playerRadius = 0.5;
+        const moveVector = direction.clone().multiplyScalar(CONFIG.playerSpeed);
+
+        // 分别检测X和Z方向的碰撞，实现墙壁滑动效果
+        // 检测水平碰撞时，考虑玩家是否可以站在障碍物上
+        const checkCollision = (newPos) => {
+          for (const obstacle of obstaclesRef.current) {
+            const box = new THREE.Box3().setFromObject(obstacle);
+            box.expandByScalar(playerRadius);
+            const playerFeetY = camera.position.y - CONFIG.playerHeight;
+            // 如果玩家脚部高于障碍物顶部，不发生碰撞（可以跳上）
+            if (playerFeetY >= box.max.y - 0.1) {
+              continue;
+            }
+            // 使用当前相机高度进行碰撞检测
+            if (
+              box.containsPoint(
+                new THREE.Vector3(newPos.x, camera.position.y, newPos.z),
+              )
+            ) {
+              return true;
+            }
+          }
+          return false;
+        };
+
+        // 先尝试完整移动
+        const fullNewPos = camera.position.clone().add(moveVector);
+        if (!checkCollision(fullNewPos)) {
+          camera.position.add(moveVector);
+        } else {
+          // 完整移动有碰撞，分别尝试X和Z方向
+          const xOnlyPos = camera.position.clone();
+          xOnlyPos.x += moveVector.x;
+
+          const zOnlyPos = camera.position.clone();
+          zOnlyPos.z += moveVector.z;
+
+          // 检查X方向移动
+          if (!checkCollision(xOnlyPos)) {
+            camera.position.x = xOnlyPos.x;
+          }
+
+          // 检查Z方向移动
+          if (!checkCollision(zOnlyPos)) {
+            camera.position.z = zOnlyPos.z;
+          }
+        }
 
         // 边界检测
         camera.position.x = Math.max(-95, Math.min(95, camera.position.x));
         camera.position.z = Math.max(-95, Math.min(95, camera.position.z));
+      }
+
+      // 重力和跳跃系统
+      const playerRadius = 0.5;
+      const playerPhysics = playerPhysicsRef.current;
+
+      // 检测脚下的地面/障碍物高度
+      const getGroundHeight = (x, z) => {
+        let maxHeight = 0; // 默认地面高度
+        const feetY = camera.position.y - CONFIG.playerHeight;
+
+        for (const obstacle of obstaclesRef.current) {
+          const box = new THREE.Box3().setFromObject(obstacle);
+          // 检查玩家是否在障碍物的XZ范围内
+          if (
+            x >= box.min.x - playerRadius &&
+            x <= box.max.x + playerRadius &&
+            z >= box.min.z - playerRadius &&
+            z <= box.max.z + playerRadius
+          ) {
+            // 如果玩家在障碍物上方
+            if (feetY >= box.max.y - 0.5 && feetY <= box.max.y + 2) {
+              maxHeight = Math.max(maxHeight, box.max.y);
+            }
+          }
+        }
+        return maxHeight;
+      };
+
+      const groundHeight = getGroundHeight(
+        camera.position.x,
+        camera.position.z,
+      );
+      const targetY = groundHeight + CONFIG.playerHeight;
+
+      // 应用重力
+      if (!playerPhysics.isGrounded) {
+        playerPhysics.velocityY -= CONFIG.gravity;
+        camera.position.y += playerPhysics.velocityY;
+
+        // 检测是否落地
+        if (camera.position.y <= targetY) {
+          camera.position.y = targetY;
+          playerPhysics.velocityY = 0;
+          playerPhysics.isGrounded = true;
+        }
+      } else {
+        // 在地面上时，跟随地面高度
+        if (camera.position.y < targetY) {
+          camera.position.y = targetY;
+        } else if (camera.position.y > targetY + 0.1) {
+          // 走出障碍物边缘，开始下落
+          playerPhysics.isGrounded = false;
+        }
+      }
+
+      // 防止穿透天花板
+      if (camera.position.y > 10) {
+        camera.position.y = 10;
+        playerPhysics.velocityY = 0;
       }
 
       // 更新子弹
@@ -420,13 +535,66 @@ const FPSGame3D = () => {
         return true;
       });
 
+      // 敌人碰撞检测函数
+      const enemyRadius = 0.6;
+      const checkEnemyCollision = (pos, excludeEnemy) => {
+        for (const obstacle of obstaclesRef.current) {
+          const box = new THREE.Box3().setFromObject(obstacle);
+          box.expandByScalar(enemyRadius);
+          if (box.containsPoint(new THREE.Vector3(pos.x, 1, pos.z))) {
+            return true;
+          }
+        }
+        // 检测与其他敌人的碰撞
+        for (const otherEnemy of enemiesRef.current) {
+          if (otherEnemy !== excludeEnemy) {
+            const dist = pos.distanceTo(otherEnemy.position);
+            if (dist < enemyRadius * 2) {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+
       // 更新敌人
       enemiesRef.current.forEach((enemy) => {
         const direction = new THREE.Vector3();
         direction.subVectors(camera.position, enemy.position);
         direction.y = 0;
         direction.normalize();
-        enemy.position.add(direction.multiplyScalar(enemy.userData.speed));
+
+        const moveVector = direction
+          .clone()
+          .multiplyScalar(enemy.userData.speed);
+
+        // 先尝试完整移动
+        const fullNewPos = enemy.position.clone().add(moveVector);
+        if (!checkEnemyCollision(fullNewPos, enemy)) {
+          enemy.position.add(moveVector);
+        } else {
+          // 完整移动有碰撞，分别尝试X和Z方向
+          const xOnlyPos = enemy.position.clone();
+          xOnlyPos.x += moveVector.x;
+
+          const zOnlyPos = enemy.position.clone();
+          zOnlyPos.z += moveVector.z;
+
+          // 检查X方向移动
+          if (!checkEnemyCollision(xOnlyPos, enemy)) {
+            enemy.position.x = xOnlyPos.x;
+          }
+
+          // 检查Z方向移动
+          if (!checkEnemyCollision(zOnlyPos, enemy)) {
+            enemy.position.z = zOnlyPos.z;
+          }
+        }
+
+        // 边界检测
+        enemy.position.x = Math.max(-95, Math.min(95, enemy.position.x));
+        enemy.position.z = Math.max(-95, Math.min(95, enemy.position.z));
+
         enemy.lookAt(camera.position.x, enemy.position.y, camera.position.z);
 
         // 检测敌人与玩家碰撞
@@ -464,6 +632,7 @@ const FPSGame3D = () => {
     bulletsRef.current = [];
     enemiesRef.current = [];
     playerRef.current = { yaw: 0, pitch: 0 };
+    playerPhysicsRef.current = { velocityY: 0, isGrounded: true };
   };
 
   // 重新开始
@@ -474,6 +643,7 @@ const FPSGame3D = () => {
     setHealth(100);
     bulletsRef.current = [];
     enemiesRef.current = [];
+    playerPhysicsRef.current = { velocityY: 0, isGrounded: true };
 
     setTimeout(() => {
       setIsStarted(true);
@@ -498,7 +668,7 @@ const FPSGame3D = () => {
             开始游戏
           </button>
           <div className="mt-8 text-gray-400 text-center">
-            <p className="mb-2">WASD 移动 | 鼠标瞄准 | 左键射击</p>
+            <p className="mb-2">WASD 移动 | 空格跳跃 | 鼠标瞄准 | 左键射击</p>
             <p>点击画面锁定鼠标</p>
           </div>
         </div>
@@ -548,13 +718,12 @@ const FPSGame3D = () => {
 
           {/* 准星 */}
           {isLocked && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-              <div
-                className="relative"
-                style={{ transform: "translate(-50%, -50%)" }}
-              >
-                <div className="w-6 h-0.5 bg-green-500 absolute -left-3 top-0" />
-                <div className="w-0.5 h-6 bg-green-500 absolute left-0 -top-3" />
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 top-18.25">
+              <div className="relative w-6 h-6">
+                {/* 横线 */}
+                <div className="absolute left-0 top-1/2 w-full h-0.5 bg-green-500 -translate-y-1/2" />
+                {/* 竖线 */}
+                <div className="absolute top-0 left-1/2 w-0.5 h-full bg-green-500 -translate-x-1/2" />
               </div>
             </div>
           )}
