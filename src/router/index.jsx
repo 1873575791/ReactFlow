@@ -3,6 +3,7 @@ import Layout from "../layout";
 import Home from "../pages/Home";
 import ReactFlowPage from "../pages/ReactFlow";
 import FPSGame from "../pages/FPS";
+import ThreeDCardDemo from "../pages/3DCard";
 
 export const routes = [
   {
@@ -29,6 +30,11 @@ export const routes = [
         path: "/fps",
         name: "FPS Game",
         element: <FPSGame />,
+      },
+      {
+        path: "/3dcard",
+        name: "3D Card",
+        element: <ThreeDCardDemo />,
       },
     ],
   },

@@ -7,9 +7,12 @@ import {
   addEdge,
   applyEdgeChanges,
   applyNodeChanges,
+  ReactFlowProvider,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import AlignmentGuides from "./AlignmentGuides";
+import SelectionPlusButton from "./SelectionPlusButton";
+import BatchConnectionLine from "./BatchConnectionLine";
 
 const initialNodes = [
   { id: "n1", position: { x: 0, y: 0 }, data: { label: "Node 1" } },
@@ -17,7 +20,7 @@ const initialNodes = [
 ];
 const initialEdges = [{ id: "n1-n2", source: "n1", target: "n2" }];
 
-const ReactFlowPage = () => {
+const ReactFlowContent = () => {
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
 
@@ -163,6 +166,7 @@ const ReactFlowPage = () => {
         onNodeDragStart={onNodeDragStart}
         onNodeDrag={onNodeDrag}
         onNodeDragStop={onNodeDragStop}
+        connectionLineComponent={BatchConnectionLine}
         fitView
         panOnScroll
         selectionOnDrag
@@ -173,8 +177,16 @@ const ReactFlowPage = () => {
         <MiniMap />
         <Background variant="dots" gap={15} size={1} />
         <AlignmentGuides isDragging={isDragging} />
+        <SelectionPlusButton edges={edges} setEdges={setEdges} />
       </ReactFlow>
     </div>
   );
 };
+
+const ReactFlowPage = () => (
+  <ReactFlowProvider>
+    <ReactFlowContent />
+  </ReactFlowProvider>
+);
+
 export default ReactFlowPage;
