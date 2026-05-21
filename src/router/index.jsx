@@ -5,6 +5,7 @@ import ReactFlowPage from "../pages/ReactFlow";
 import FPSGame from "../pages/FPS";
 import ThreeDCardDemo from "../pages/3DCard";
 import MarkdownViewer from "../pages/MarkdownViewer";
+import CalendarPage from "../pages/Calendar";
 
 export const routes = [
   {
@@ -41,6 +42,11 @@ export const routes = [
         path: "/md-viewer",
         name: "MD Viewer",
         element: <MarkdownViewer />,
+      },
+      {
+        path: "/calendar",
+        name: "Calendar",
+        element: <CalendarPage />,
       },
     ],
   },
