@@ -139,7 +139,9 @@ export const updateShooting = (
   createBullet
 ) => {
   const now = Date.now();
-  if (isShootingRef.current && document.pointerLockElement) {
+  // 不再依赖 pointerLock（触摸端没有 pointerLock）。
+  // 由 isShootingRef 表示「玩家正在按住扳机」，PC 鼠标和触摸按钮都会维护它
+  if (isShootingRef.current) {
     const currentMode = fireModeRef.current;
 
     if (

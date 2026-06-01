@@ -10,6 +10,7 @@ import {
   useTouchControls,
   triggerJump,
 } from "./hooks/useTouchControls";
+import { useAutoFullscreenOnLandscape } from "./hooks/useAutoFullscreen";
 import TouchControls from "./components/TouchControls";
 import RotateHint from "./components/RotateHint";
 import {
@@ -26,6 +27,7 @@ import { StartScreen, GameOverScreen, GameHUD } from "./components/UI";
 
 const FPSGame3D = () => {
   // Refs
+  const rootRef = useRef(null);
   const containerRef = useRef(null);
   const sceneRef = useRef(null);
   const cameraRef = useRef(null);
@@ -74,6 +76,13 @@ const FPSGame3D = () => {
     handleLookMove,
     handleLookEnd,
   } = useTouchControls(cameraRef, playerRef);
+
+  // 横屏自动全屏：触摸设备 + 游戏进行中启用，被动跟随系统方向变化。
+  // 全屏目标是最外层根节点，确保 TouchControls / RotateHint 等子节点也在全屏元素内不被隐藏
+  useAutoFullscreenOnLandscape(
+    isTouch && isStarted && !gameOver,
+    rootRef,
+  );
 
   // 子弹创建回调
   const handleBulletCreate = useCallback((bullet) => {
@@ -126,6 +135,29 @@ const FPSGame3D = () => {
     };
   }, []);
 
+  // 触摸设备：阻止双指缩放与 iOS Safari 的捏合手势，保证射击/视角不被系统手势打断
+  useEffect(() => {
+    if (!isTouch) return;
+    const preventMultiTouch = (e) => {
+      if (e.touches && e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+    const preventGesture = (e) => e.preventDefault();
+
+    document.addEventListener("touchmove", preventMultiTouch, {
+      passive: false,
+    });
+    document.addEventListener("gesturestart", preventGesture);
+    document.addEventListener("gesturechange", preventGesture);
+
+    return () => {
+      document.removeEventListener("touchmove", preventMultiTouch);
+      document.removeEventListener("gesturestart", preventGesture);
+      document.removeEventListener("gesturechange", preventGesture);
+    };
+  }, [isTouch]);
+
   // 离开 FPS 页面时无需特殊清理屏幕方向（被动跟随系统）
 
   // 锁定鼠标（触摸设备不需要 pointerLock）
@@ -136,11 +168,35 @@ const FPSGame3D = () => {
     }
   }, [isTouch, isStarted, gameOver]);
 
-  // 触摸射击：按当前火力模式触发一次射击
-  const handleTouchShoot = useCallback(() => {
+  // 触摸射击：支持按住持续开火（单发触发一次，三连发补足计数，机枪由 updateShooting 持续循环）
+  const handleTouchShootStart = useCallback(() => {
     if (!isStarted || gameOver) return;
-    handleCreateBullet();
-  }, [isStarted, gameOver, handleCreateBullet]);
+    isShootingRef.current = true;
+    const currentMode = fireModeRef.current;
+
+    if (currentMode === FIRE_MODE.SINGLE) {
+      handleCreateBullet();
+    } else if (currentMode === FIRE_MODE.BURST) {
+      burstCountRef.current = 3;
+      lastShootTimeRef.current = Date.now();
+      handleCreateBullet();
+      burstCountRef.current--;
+    }
+    // AUTOMATIC 模式由 updateShooting 循环 createBullet，按住期间持续开火
+  }, [
+    isStarted,
+    gameOver,
+    isShootingRef,
+    fireModeRef,
+    burstCountRef,
+    lastShootTimeRef,
+    handleCreateBullet,
+  ]);
+
+  const handleTouchShootEnd = useCallback(() => {
+    isShootingRef.current = false;
+    burstCountRef.current = 0;
+  }, [isShootingRef, burstCountRef]);
 
   // 触摸跳跃
   const handleTouchJump = useCallback(() => {
@@ -274,9 +330,18 @@ const FPSGame3D = () => {
   };
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-black">
+    <div
+      ref={rootRef}
+      className="relative w-full h-full overflow-hidden bg-black"
+      style={{ touchAction: "none" }}
+    >
       {/* 游戏画布 */}
-      <div ref={containerRef} className="w-full h-full" onClick={handleClick} />
+      <div
+        ref={containerRef}
+        className="w-full h-full"
+        onClick={handleClick}
+        style={{ touchAction: "none" }}
+      />
 
       {/* 触摸视角滑动层（仅触摸设备，游戏进行中）。
           覆盖全屏接收滑动手势更新视角，摇杆/按钮在其上层（z-30）不受影响 */}
@@ -302,7 +367,8 @@ const FPSGame3D = () => {
         <TouchControls
           onJoystickMove={handleJoystickMove}
           onJoystickEnd={handleJoystickEnd}
-          onShoot={handleTouchShoot}
+          onShootStart={handleTouchShootStart}
+          onShootEnd={handleTouchShootEnd}
           onJump={handleTouchJump}
           onCycleFireMode={handleCycleFireMode}
           fireMode={fireMode}

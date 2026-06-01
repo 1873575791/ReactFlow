@@ -114,6 +114,41 @@ function ActionButton({ label, onPress, className }) {
   );
 }
 
+// 射击按钮：支持「按住持续触发」，机枪/三连发依赖该状态持续开火
+function ShootButton({ onPressStart, onPressEnd, className, label }) {
+  const handleStart = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onPressStart();
+    },
+    [onPressStart],
+  );
+
+  const handleEnd = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onPressEnd();
+    },
+    [onPressEnd],
+  );
+
+  return (
+    <button
+      type="button"
+      onTouchStart={handleStart}
+      onTouchEnd={handleEnd}
+      onTouchCancel={handleEnd}
+      onContextMenu={(e) => e.preventDefault()}
+      className={`flex items-center justify-center rounded-full text-white font-bold border-2 select-none touch-none active:scale-95 transition-transform ${className}`}
+      style={{ touchAction: "none" }}
+    >
+      {label}
+    </button>
+  );
+}
+
 /**
  * 触摸操控层：左摇杆 + 右侧操作按钮（射击/跳跃/切火力）。
  * 视角滑动由父级的全屏图层处理。
@@ -121,7 +156,8 @@ function ActionButton({ label, onPress, className }) {
 export default function TouchControls({
   onJoystickMove,
   onJoystickEnd,
-  onShoot,
+  onShootStart,
+  onShootEnd,
   onJump,
   onCycleFireMode,
   fireMode,
@@ -160,9 +196,10 @@ export default function TouchControls({
             className="w-16 h-16 text-lg bg-green-500/60 border-green-300/60 landscape:w-14 landscape:h-14 landscape:text-base"
           />
         </div>
-        <ActionButton
+        <ShootButton
           label="射击"
-          onPress={onShoot}
+          onPressStart={onShootStart}
+          onPressEnd={onShootEnd}
           className="w-24 h-24 text-xl bg-red-500/60 border-red-300/60 landscape:w-20 landscape:h-20 landscape:text-lg"
         />
       </div>
