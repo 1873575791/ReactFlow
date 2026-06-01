@@ -7,7 +7,11 @@ function VirtualJoystick({ onMove, onEnd }) {
   const touchIdRef = useRef(null);
   const [knobOffset, setKnobOffset] = useState({ x: 0, y: 0 });
 
-  const maxRadius = 45;
+  // 根据底盘实际尺寸动态计算可拖拽半径，横屏缩小尺寸时比例保持一致
+  const getMaxRadius = () => {
+    if (!baseRef.current) return 45;
+    return baseRef.current.getBoundingClientRect().width * 0.36;
+  };
 
   const updateFromTouch = useCallback(
     (clientX, clientY) => {
@@ -15,6 +19,7 @@ function VirtualJoystick({ onMove, onEnd }) {
       const rect = baseRef.current.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
       const centerY = rect.top + rect.height / 2;
+      const maxRadius = getMaxRadius();
 
       let offsetX = clientX - centerX;
       let offsetY = clientY - centerY;
@@ -72,11 +77,11 @@ function VirtualJoystick({ onMove, onEnd }) {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
-      className="absolute bottom-8 left-6 z-30 w-32 h-32 rounded-full bg-white/10 border-2 border-white/30 touch-none select-none"
+      className="absolute bottom-8 left-6 z-30 w-32 h-32 rounded-full bg-white/10 border-2 border-white/30 touch-none select-none landscape:bottom-5 landscape:left-8 landscape:w-28 landscape:h-28"
       style={{ touchAction: "none" }}
     >
       <div
-        className="absolute top-1/2 left-1/2 w-14 h-14 rounded-full bg-white/40 border border-white/50"
+        className="absolute top-1/2 left-1/2 w-14 h-14 rounded-full bg-white/40 border border-white/50 landscape:w-12 landscape:h-12"
         style={{
           transform: `translate(calc(-50% + ${knobOffset.x}px), calc(-50% + ${knobOffset.y}px))`,
         }}
@@ -142,23 +147,23 @@ export default function TouchControls({
       </div>
 
       {/* 右侧操作按钮组 */}
-      <div className="absolute bottom-8 right-6 z-30 flex flex-col items-end gap-3 pointer-events-auto">
-        <div className="flex items-center gap-3">
+      <div className="absolute bottom-8 right-6 z-30 flex flex-col items-end gap-3 pointer-events-auto landscape:bottom-5 landscape:right-8 landscape:gap-2">
+        <div className="flex items-center gap-3 landscape:gap-2">
           <ActionButton
             label={getFireLabel()}
             onPress={onCycleFireMode}
-            className="w-12 h-12 text-base bg-blue-500/60 border-blue-300/60"
+            className="w-12 h-12 text-base bg-blue-500/60 border-blue-300/60 landscape:w-10 landscape:h-10 landscape:text-sm"
           />
           <ActionButton
             label="跳"
             onPress={onJump}
-            className="w-16 h-16 text-lg bg-green-500/60 border-green-300/60"
+            className="w-16 h-16 text-lg bg-green-500/60 border-green-300/60 landscape:w-14 landscape:h-14 landscape:text-base"
           />
         </div>
         <ActionButton
           label="射击"
           onPress={onShoot}
-          className="w-24 h-24 text-xl bg-red-500/60 border-red-300/60"
+          className="w-24 h-24 text-xl bg-red-500/60 border-red-300/60 landscape:w-20 landscape:h-20 landscape:text-lg"
         />
       </div>
     </div>
