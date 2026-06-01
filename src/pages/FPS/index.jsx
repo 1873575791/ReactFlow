@@ -11,7 +11,7 @@ import {
   triggerJump,
 } from "./hooks/useTouchControls";
 import TouchControls from "./components/TouchControls";
-import { lockLandscape, unlockOrientation } from "./utils/orientation";
+import RotateHint from "./components/RotateHint";
 import {
   updatePlayerMovement,
   updateGravityAndJump,
@@ -126,14 +126,7 @@ const FPSGame3D = () => {
     };
   }, []);
 
-  // 离开 FPS 页面时解锁横屏并退出全屏，避免影响其他页面
-  useEffect(() => {
-    return () => {
-      if (isTouch) {
-        unlockOrientation();
-      }
-    };
-  }, [isTouch]);
+  // 离开 FPS 页面时无需特殊清理屏幕方向（被动跟随系统）
 
   // 锁定鼠标（触摸设备不需要 pointerLock）
   const handleClick = useCallback(() => {
@@ -254,10 +247,6 @@ const FPSGame3D = () => {
     setIsStarted(true);
     // 触摸设备无需 pointerLock，直接进入控制状态以显示准星和操控层
     setIsLocked(isTouch);
-    // 触摸设备进入游戏时锁定横屏（需在用户手势中触发）
-    if (isTouch) {
-      lockLandscape(containerRef.current);
-    }
     bulletsRef.current = [];
     enemiesRef.current = [];
     playerRef.current = { yaw: 0, pitch: 0 };
@@ -281,9 +270,6 @@ const FPSGame3D = () => {
     setTimeout(() => {
       setIsStarted(true);
       setIsLocked(isTouch);
-      if (isTouch) {
-        lockLandscape(containerRef.current);
-      }
     }, 100);
   };
 
@@ -322,6 +308,9 @@ const FPSGame3D = () => {
           fireMode={fireMode}
         />
       )}
+
+      {/* 竖屏提示（触摸设备游戏进行中，被动响应系统方向变化） */}
+      {isTouch && isStarted && !gameOver && <RotateHint />}
 
       {/* 开始界面 */}
       {!isStarted && <StartScreen onStart={startGame} isTouch={isTouch} />}
