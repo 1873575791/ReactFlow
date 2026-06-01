@@ -9,13 +9,22 @@ export const CardContainer = ({ children, className, containerClassName }) => {
   const containerRef = useRef(null);
   const [isMouseEntered, setIsMouseEntered] = useState(false);
 
-  const handleMouseMove = (e) => {
+  const applyTilt = (clientX, clientY) => {
     if (!containerRef.current) return;
     const { left, top, width, height } =
       containerRef.current.getBoundingClientRect();
-    const x = (e.clientX - left - width / 2) / 25;
-    const y = (e.clientY - top - height / 2) / 25;
+    const x = (clientX - left - width / 2) / 25;
+    const y = (clientY - top - height / 2) / 25;
     containerRef.current.style.transform = `rotateY(${x}deg) rotateX(${y}deg)`;
+  };
+
+  const resetTilt = () => {
+    if (!containerRef.current) return;
+    containerRef.current.style.transform = `rotateY(0deg) rotateX(0deg)`;
+  };
+
+  const handleMouseMove = (e) => {
+    applyTilt(e.clientX, e.clientY);
   };
 
   const handleMouseEnter = () => {
@@ -24,9 +33,23 @@ export const CardContainer = ({ children, className, containerClassName }) => {
   };
 
   const handleMouseLeave = () => {
-    if (!containerRef.current) return;
     setIsMouseEntered(false);
-    containerRef.current.style.transform = `rotateY(0deg) rotateX(0deg)`;
+    resetTilt();
+  };
+
+  const handleTouchStart = () => {
+    setIsMouseEntered(true);
+  };
+
+  const handleTouchMove = (e) => {
+    const touch = e.touches[0];
+    if (!touch) return;
+    applyTilt(touch.clientX, touch.clientY);
+  };
+
+  const handleTouchEnd = () => {
+    setIsMouseEntered(false);
+    resetTilt();
   };
   return (
     <MouseEnterContext.Provider value={[isMouseEntered, setIsMouseEntered]}>
@@ -44,12 +67,17 @@ export const CardContainer = ({ children, className, containerClassName }) => {
           onMouseEnter={handleMouseEnter}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchEnd}
           className={cn(
             "flex items-center justify-center relative transition-all duration-200 ease-linear",
             className,
           )}
           style={{
             transformStyle: "preserve-3d",
+            touchAction: "none",
           }}
         >
           {children}

@@ -6,6 +6,13 @@ import {
   useShooting,
 } from "./hooks/useControls";
 import {
+  isTouchDevice,
+  useTouchControls,
+  triggerJump,
+} from "./hooks/useTouchControls";
+import TouchControls from "./components/TouchControls";
+import { lockLandscape, unlockOrientation } from "./utils/orientation";
+import {
   updatePlayerMovement,
   updateGravityAndJump,
   updateShooting,
@@ -45,6 +52,9 @@ const FPSGame3D = () => {
   const [isStarted, setIsStarted] = useState(false);
   const [fireMode, setFireMode] = useState(FIRE_MODE.SINGLE);
 
+  // 是否触摸设备（移动端）。惰性初始化，仅检测一次
+  const [isTouch] = useState(() => isTouchDevice());
+
   // 键盘控制
   const { fireModeRef, moveState } = useKeyboardControls(
     isStarted,
@@ -53,8 +63,17 @@ const FPSGame3D = () => {
     setFireMode,
   );
 
-  // 鼠标控制
+  // 鼠标控制（触摸设备不启用 pointerLock 鼠标视角）
   useMouseControls(isStarted, gameOver, cameraRef, playerRef);
+
+  // 触摸控制（虚拟摇杆 + 滑动视角）
+  const {
+    handleJoystickMove,
+    handleJoystickEnd,
+    handleLookStart,
+    handleLookMove,
+    handleLookEnd,
+  } = useTouchControls(cameraRef, playerRef);
 
   // 子弹创建回调
   const handleBulletCreate = useCallback((bullet) => {
@@ -107,12 +126,43 @@ const FPSGame3D = () => {
     };
   }, []);
 
-  // 锁定鼠标
+  // 离开 FPS 页面时解锁横屏并退出全屏，避免影响其他页面
+  useEffect(() => {
+    return () => {
+      if (isTouch) {
+        unlockOrientation();
+      }
+    };
+  }, [isTouch]);
+
+  // 锁定鼠标（触摸设备不需要 pointerLock）
   const handleClick = useCallback(() => {
+    if (isTouch) return;
     if (isStarted && !gameOver && containerRef.current) {
       containerRef.current.requestPointerLock();
     }
+  }, [isTouch, isStarted, gameOver]);
+
+  // 触摸射击：按当前火力模式触发一次射击
+  const handleTouchShoot = useCallback(() => {
+    if (!isStarted || gameOver) return;
+    handleCreateBullet();
+  }, [isStarted, gameOver, handleCreateBullet]);
+
+  // 触摸跳跃
+  const handleTouchJump = useCallback(() => {
+    if (!isStarted || gameOver) return;
+    triggerJump(playerPhysicsRef);
   }, [isStarted, gameOver]);
+
+  // 触摸切换火力模式（循环 单发 -> 三连发 -> 机枪）
+  const handleCycleFireMode = useCallback(() => {
+    const order = [FIRE_MODE.SINGLE, FIRE_MODE.BURST, FIRE_MODE.AUTOMATIC];
+    const currentIndex = order.indexOf(fireModeRef.current);
+    const next = order[(currentIndex + 1) % order.length];
+    fireModeRef.current = next;
+    setFireMode(next);
+  }, [fireModeRef]);
 
   // 生成敌人
   useEffect(() => {
@@ -202,6 +252,12 @@ const FPSGame3D = () => {
     setHealth(100);
     setGameOver(false);
     setIsStarted(true);
+    // 触摸设备无需 pointerLock，直接进入控制状态以显示准星和操控层
+    setIsLocked(isTouch);
+    // 触摸设备进入游戏时锁定横屏（需在用户手势中触发）
+    if (isTouch) {
+      lockLandscape(containerRef.current);
+    }
     bulletsRef.current = [];
     enemiesRef.current = [];
     playerRef.current = { yaw: 0, pitch: 0 };
@@ -224,6 +280,10 @@ const FPSGame3D = () => {
 
     setTimeout(() => {
       setIsStarted(true);
+      setIsLocked(isTouch);
+      if (isTouch) {
+        lockLandscape(containerRef.current);
+      }
     }, 100);
   };
 
@@ -232,8 +292,39 @@ const FPSGame3D = () => {
       {/* 游戏画布 */}
       <div ref={containerRef} className="w-full h-full" onClick={handleClick} />
 
+      {/* 触摸视角滑动层（仅触摸设备，游戏进行中）。
+          覆盖全屏接收滑动手势更新视角，摇杆/按钮在其上层（z-30）不受影响 */}
+      {isTouch && isStarted && !gameOver && (
+        <div
+          className="absolute inset-0 z-20"
+          style={{ touchAction: "none" }}
+          onTouchStart={(e) => {
+            const touch = e.changedTouches[0];
+            handleLookStart(touch.clientX, touch.clientY);
+          }}
+          onTouchMove={(e) => {
+            const touch = e.changedTouches[0];
+            handleLookMove(touch.clientX, touch.clientY);
+          }}
+          onTouchEnd={handleLookEnd}
+          onTouchCancel={handleLookEnd}
+        />
+      )}
+
+      {/* 触摸操控 UI（摇杆 + 按钮） */}
+      {isTouch && isStarted && !gameOver && (
+        <TouchControls
+          onJoystickMove={handleJoystickMove}
+          onJoystickEnd={handleJoystickEnd}
+          onShoot={handleTouchShoot}
+          onJump={handleTouchJump}
+          onCycleFireMode={handleCycleFireMode}
+          fireMode={fireMode}
+        />
+      )}
+
       {/* 开始界面 */}
-      {!isStarted && <StartScreen onStart={startGame} />}
+      {!isStarted && <StartScreen onStart={startGame} isTouch={isTouch} />}
 
       {/* 游戏结束界面 */}
       {gameOver && <GameOverScreen score={score} onRestart={restartGame} />}

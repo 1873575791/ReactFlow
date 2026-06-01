@@ -65,8 +65,8 @@ function MonthView({ year, month, events, onEventClick }) {
   };
 
   return (
-    <div className="h-full overflow-y-auto bg-white px-6 py-4">
-      <div className="border border-gray-100 rounded-sm">
+    <div className="h-full overflow-x-auto overflow-y-auto bg-white px-2 py-4 sm:px-6">
+      <div className="border border-gray-100 rounded-sm min-w-[640px] sm:min-w-0">
         <div className="grid grid-cols-7 border-b border-gray-100 bg-gray-50/80">
           {WEEKDAY_LABELS.map((w) => (
             <div

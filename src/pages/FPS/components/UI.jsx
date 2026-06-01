@@ -1,21 +1,33 @@
 import { FIRE_MODE } from "../config";
 
 // 开始界面
-export const StartScreen = ({ onStart }) => (
-  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10">
-    <h1 className="text-5xl font-bold text-white mb-8">3D FPS 射击游戏</h1>
+export const StartScreen = ({ onStart, isTouch }) => (
+  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10 px-4">
+    <h1 className="text-3xl sm:text-5xl font-bold text-white mb-8 text-center">
+      3D FPS 射击游戏
+    </h1>
     <button
       onClick={onStart}
-      className="px-10 py-5 bg-green-500 text-white text-2xl font-bold rounded-lg hover:bg-green-600 transition-colors"
+      className="px-8 py-4 sm:px-10 sm:py-5 bg-green-500 text-white text-xl sm:text-2xl font-bold rounded-lg hover:bg-green-600 transition-colors"
     >
       开始游戏
     </button>
-    <div className="mt-8 text-gray-400 text-center">
-      <p className="mb-2">
-        WASD 移动 | Shift静步 | 空格二连跳 | 鼠标瞄准 | 左键射击
-      </p>
-      <p className="mb-2">[1]单发 [2]三连发 [3]机枪</p>
-      <p>点击画面锁定鼠标</p>
+    <div className="mt-8 text-gray-400 text-center text-sm sm:text-base">
+      {isTouch ? (
+        <>
+          <p className="mb-2">左侧摇杆移动 | 滑动屏幕转视角</p>
+          <p className="mb-2">右下「射击」开火 | 「跳」二连跳</p>
+          <p>点击「单/连/枪」切换火力模式</p>
+        </>
+      ) : (
+        <>
+          <p className="mb-2">
+            WASD 移动 | Shift静步 | 空格二连跳 | 鼠标瞄准 | 左键射击
+          </p>
+          <p className="mb-2">[1]单发 [2]三连发 [3]机枪</p>
+          <p>点击画面锁定鼠标</p>
+        </>
+      )}
     </div>
   </div>
 );

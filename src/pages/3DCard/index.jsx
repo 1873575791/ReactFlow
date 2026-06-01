@@ -4,7 +4,7 @@ const ThreeDCardDemo = () => {
   return (
     <div>
       <CardContainer className="inter-var">
-        <div className="bg-gray-50 relative group/card  dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black dark:border-white/[0.2] border-black/[0.1] w-auto sm:w-[30rem] h-auto rounded-xl p-6 border  ">
+        <div className="bg-gray-50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black dark:border-white/[0.2] border-black/[0.1] w-[90vw] max-w-[30rem] sm:w-[30rem] h-auto rounded-xl p-4 sm:p-6 border">
           <div className="text-xl font-bold text-neutral-600 dark:text-white">
             Make things float in air
           </div>
@@ -24,7 +24,7 @@ const ThreeDCardDemo = () => {
               alt="thumbnail"
             />
           </div>
-          <div className="flex justify-between items-center mt-20">
+          <div className="flex justify-between items-center mt-10 sm:mt-20">
             <div
               translateZ={20}
               as="a"

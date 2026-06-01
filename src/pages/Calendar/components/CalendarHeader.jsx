@@ -38,7 +38,7 @@ function CalendarHeader({
     : `${year}年`;
 
   return (
-    <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white">
+    <div className="flex items-center justify-between px-3 py-3 sm:px-6 sm:py-4 border-b border-gray-100 bg-white">
       <div className="flex items-center gap-2">
         <button
           type="button"

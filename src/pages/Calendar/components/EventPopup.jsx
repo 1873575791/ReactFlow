@@ -32,9 +32,12 @@ function EventPopup({ event, anchor, onClose }) {
   const end = parseDate(event.endDate);
   const colors = EVENT_COLORS[event.color] ?? EVENT_COLORS.warning;
 
+  const popupWidth = 300;
+  const horizontalMargin = 12;
+  const maxLeft = window.innerWidth - popupWidth - horizontalMargin;
   const style = {
     position: "fixed",
-    left: Math.min(anchor.x, window.innerWidth - 320),
+    left: Math.max(horizontalMargin, Math.min(anchor.x, maxLeft)),
     top: Math.min(anchor.y + 8, window.innerHeight - 260),
     zIndex: 50,
   };
@@ -44,7 +47,7 @@ function EventPopup({ event, anchor, onClose }) {
       <div className="fixed inset-0 z-40" onClick={onClose} aria-hidden />
       <div
         style={style}
-        className="z-50 w-[300px] rounded-lg shadow-xl overflow-hidden bg-white"
+        className="z-50 w-[calc(100vw-24px)] max-w-[300px] rounded-lg shadow-xl overflow-hidden bg-white"
         role="dialog"
       >
         <div className={cn("px-4 py-3 text-white", colors.header)}>

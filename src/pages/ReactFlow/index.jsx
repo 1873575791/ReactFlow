@@ -156,7 +156,7 @@ const ReactFlowContent = () => {
   );
 
   return (
-    <div style={{ width: "100vw", height: "calc(100vh - 73px)" }}>
+    <div style={{ width: "100%", height: "calc(100vh - 73px)" }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -174,7 +174,7 @@ const ReactFlowContent = () => {
         autoPanOnConnect
       >
         <Controls />
-        <MiniMap />
+        <MiniMap className="hidden! sm:block!" />
         <Background variant="dots" gap={15} size={1} />
         <AlignmentGuides isDragging={isDragging} />
         <SelectionPlusButton edges={edges} setEdges={setEdges} />

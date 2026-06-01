@@ -49,11 +49,11 @@ function YearSection({ year, events, onEventClick }) {
 
   return (
     <section className="mb-2">
-      <h2 className="text-sm font-medium text-gray-700 px-6 py-3 bg-gray-50/80 border-b border-gray-100">
+      <h2 className="text-sm font-medium text-gray-700 px-3 py-3 sm:px-6 bg-gray-50/80 border-b border-gray-100">
         {year}年
       </h2>
       <div
-        className="relative mx-6 my-4 border border-gray-100 rounded-sm overflow-hidden"
+        className="relative mx-3 my-4 sm:mx-6 border border-gray-100 rounded-sm overflow-hidden"
         style={{ minHeight: 140 * 3 + extraHeight }}
       >
         <div className="grid grid-cols-4">
@@ -89,7 +89,8 @@ function YearSection({ year, events, onEventClick }) {
 
 function YearView({ baseYear, events, onEventClick }) {
   return (
-    <div className="overflow-y-auto h-full bg-white">
+    <div className="overflow-auto h-full bg-white">
+      <div className="min-w-[640px] sm:min-w-0">
       <YearSection
         year={baseYear}
         events={events}
@@ -100,6 +101,7 @@ function YearView({ baseYear, events, onEventClick }) {
         events={events}
         onEventClick={onEventClick}
       />
+      </div>
     </div>
   );
 }

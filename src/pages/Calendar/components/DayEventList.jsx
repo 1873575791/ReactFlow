@@ -12,9 +12,12 @@ function DayEventList({
 }) {
   if (!anchor) return null;
 
+  const panelWidth = 220;
+  const horizontalMargin = 12;
+  const maxLeft = window.innerWidth - panelWidth - horizontalMargin;
   const style = {
     position: "fixed",
-    left: Math.min(anchor.x, window.innerWidth - 240),
+    left: Math.max(horizontalMargin, Math.min(anchor.x, maxLeft)),
     top: Math.min(anchor.y, window.innerHeight - 280),
     zIndex: 50,
   };
@@ -24,7 +27,7 @@ function DayEventList({
       <div className="fixed inset-0 z-40" onClick={onClose} aria-hidden />
       <div
         style={style}
-        className="z-50 w-[220px] rounded-md shadow-lg border border-gray-100 bg-white overflow-hidden"
+        className="z-50 w-[calc(100vw-24px)] max-w-[220px] rounded-md shadow-lg border border-gray-100 bg-white overflow-hidden"
         role="listbox"
       >
         <div className="px-3 py-2 text-sm font-medium text-gray-800 border-b border-gray-100">

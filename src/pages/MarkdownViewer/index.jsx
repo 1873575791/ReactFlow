@@ -60,7 +60,7 @@ function MarkdownViewer() {
   return (
     <div className="h-full flex flex-col" style={{ colorScheme: "light" }}>
       {/* Toolbar */}
-      <div className="flex items-center gap-3 px-6 py-3 bg-gray-50 border-b border-gray-200">
+      <div className="flex items-center gap-2 px-3 py-3 sm:gap-3 sm:px-6 bg-gray-50 border-b border-gray-200">
         <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 transition-colors text-sm font-medium">
           <svg
             className="w-4 h-4"
@@ -122,11 +122,14 @@ function MarkdownViewer() {
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
               </svg>
-              <p className="text-lg">拖拽或点击上方按钮选择 .md 文件</p>
+              <p className="text-base text-center px-4 sm:text-lg">
+                <span className="hidden sm:inline">拖拽或点击上方按钮选择 .md 文件</span>
+                <span className="sm:hidden">点击上方按钮选择 .md 文件</span>
+              </p>
             </div>
           </div>
         ) : (
-          <div className="max-w-4xl mx-auto px-8 py-6">
+          <div className="max-w-4xl mx-auto px-4 py-5 sm:px-8 sm:py-6">
             <article className="prose prose-slate prose-headings:font-semibold prose-a:text-indigo-600 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-gray-900 prose-pre:text-gray-100 max-w-none text-slate-800">
               <Markdown
                 remarkPlugins={[remarkGfm]}
