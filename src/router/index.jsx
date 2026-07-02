@@ -6,6 +6,7 @@ import FPSGame from "../pages/FPS";
 import ThreeDCardDemo from "../pages/3DCard";
 import MarkdownViewer from "../pages/MarkdownViewer";
 import CalendarPage from "../pages/Calendar";
+import TextToSpeech from "../pages/TextToSpeech";
 
 export const routes = [
   {
@@ -47,6 +48,11 @@ export const routes = [
         path: "/calendar",
         name: "Calendar",
         element: <CalendarPage />,
+      },
+      {
+        path: "/tts",
+        name: "Text To Speech",
+        element: <TextToSpeech />,
       },
     ],
   },
