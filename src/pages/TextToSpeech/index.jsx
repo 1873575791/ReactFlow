@@ -1,35 +1,94 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 function TextToSpeech() {
   const [text, setText] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [history, setHistory] = useState([]);
   const utteranceRef = useRef(null);
+  const isIOSRef = useRef(false);
+  const synthReadyRef = useRef(false);
+
+  useEffect(() => {
+    // 检测 iOS
+    isIOSRef.current = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+    // 预加载语音列表（部分浏览器需要异步加载）
+    const loadVoices = () => {
+      window.speechSynthesis.getVoices();
+      synthReadyRef.current = true;
+    };
+    loadVoices();
+    window.speechSynthesis.addEventListener?.("voiceschanged", loadVoices);
+
+    return () => {
+      window.speechSynthesis.removeEventListener?.("voiceschanged", loadVoices);
+      window.speechSynthesis.cancel();
+    };
+  }, []);
 
   // 预处理文本：将连续数字拆分为单个字符，避免被读成数值
   const preprocessText = (input) => {
     return input.replace(/\d/g, (digit) => digit + " ");
   };
 
-  const handleSpeak = (content) => {
+  const handleSpeak = useCallback((content) => {
     if (!content.trim()) return;
 
+    const synth = window.speechSynthesis;
+
     // 停止当前播放
-    window.speechSynthesis.cancel();
+    synth.cancel();
 
-    const processed = preprocessText(content);
-    const utterance = new SpeechSynthesisUtterance(processed);
-    utterance.lang = "zh-CN";
-    utterance.rate = 1;
-    utterance.pitch = 1;
+    const doSpeak = () => {
+      const processed = preprocessText(content);
+      const utterance = new SpeechSynthesisUtterance(processed);
+      utterance.lang = "zh-CN";
+      utterance.rate = 1;
+      utterance.pitch = 1;
 
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
+      // 尝试选择中文语音
+      const voices = synth.getVoices();
+      const zhVoice = voices.find(
+        (v) => v.lang.startsWith("zh") && v.localService,
+      );
+      if (zhVoice) utterance.voice = zhVoice;
 
-    utteranceRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
-  };
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = (e) => {
+        // iOS 上 cancel 触发的 interrupted 错误可以忽略
+        if (e.error !== "interrupted") {
+          setIsSpeaking(false);
+        }
+      };
+
+      utteranceRef.current = utterance;
+      synth.speak(utterance);
+
+      // iOS Safari 的 bug：长文本播放中途会暂停，需要定时 resume
+      if (isIOSRef.current) {
+        const keepAlive = setInterval(() => {
+          if (!synth.speaking) {
+            clearInterval(keepAlive);
+          } else {
+            synth.pause();
+            synth.resume();
+          }
+        }, 5000);
+        utterance.onend = () => {
+          clearInterval(keepAlive);
+          setIsSpeaking(false);
+        };
+      }
+    };
+
+    // iOS 上 cancel() 后需要短暂延迟再 speak，否则引擎卡死
+    if (isIOSRef.current) {
+      setTimeout(doSpeak, 100);
+    } else {
+      doSpeak();
+    }
+  }, []);
 
   const handleSubmit = () => {
     if (text.trim()) {
