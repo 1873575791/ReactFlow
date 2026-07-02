@@ -4,18 +4,24 @@ function TextToSpeech() {
   const [text, setText] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [history, setHistory] = useState([]);
+  const [error, setError] = useState(() => {
+    if (!window.speechSynthesis) {
+      return "当前浏览器不支持语音合成，请使用 Chrome 或 Edge 浏览器";
+    }
+    return "";
+  });
   const utteranceRef = useRef(null);
   const isIOSRef = useRef(false);
-  const synthReadyRef = useRef(false);
 
   useEffect(() => {
+    if (!window.speechSynthesis) return;
+
     // 检测 iOS
     isIOSRef.current = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
-    // 预加载语音列表（部分浏览器需要异步加载）
+    // 加载语音列表
     const loadVoices = () => {
       window.speechSynthesis.getVoices();
-      synthReadyRef.current = true;
     };
     loadVoices();
     window.speechSynthesis.addEventListener?.("voiceschanged", loadVoices);
@@ -33,8 +39,13 @@ function TextToSpeech() {
 
   const handleSpeak = useCallback((content) => {
     if (!content.trim()) return;
+    setError("");
 
     const synth = window.speechSynthesis;
+    if (!synth) {
+      setError("语音合成不可用");
+      return;
+    }
 
     // 停止当前播放
     synth.cancel();
@@ -47,23 +58,51 @@ function TextToSpeech() {
       utterance.pitch = 1;
 
       // 尝试选择中文语音
-      const voices = synth.getVoices();
-      const zhVoice = voices.find(
-        (v) => v.lang.startsWith("zh") && v.localService,
-      );
-      if (zhVoice) utterance.voice = zhVoice;
+      const availableVoices = synth.getVoices();
+      const zhVoice =
+        availableVoices.find(
+          (v) => v.lang.startsWith("zh") && v.localService,
+        ) || availableVoices.find((v) => v.lang.startsWith("zh"));
+      if (zhVoice) {
+        utterance.voice = zhVoice;
+      } else if (availableVoices.length === 0) {
+        setError(
+          "未检测到语音包，请在系统设置中安装中文语音包\n（设置 → 辅助功能/无障碍 → 文字转语音 → 首选引擎）",
+        );
+        return;
+      }
 
-      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+        setError("");
+      };
       utterance.onend = () => setIsSpeaking(false);
       utterance.onerror = (e) => {
-        // iOS 上 cancel 触发的 interrupted 错误可以忽略
-        if (e.error !== "interrupted") {
-          setIsSpeaking(false);
+        if (e.error === "interrupted") return;
+        setIsSpeaking(false);
+        if (e.error === "not-allowed") {
+          setError("浏览器阻止了语音播放，请点击“播放”按钮触发");
+        } else if (e.error === "synthesis-failed") {
+          setError("语音合成失败，请检查系统 TTS 引擎是否正常");
+        } else {
+          setError(`播放失败: ${e.error || "未知错误"}`);
         }
       };
 
       utteranceRef.current = utterance;
       synth.speak(utterance);
+
+      // 安卓上检测是否真的开始播放了（静默失败检测）
+      if (!isIOSRef.current) {
+        setTimeout(() => {
+          if (!synth.speaking && !synth.pending) {
+            setIsSpeaking(false);
+            setError(
+              "语音播放未启动，可能原因：\n1. 系统未安装 TTS 引擎（如 Google TTS）\n2. 未下载中文语音包\n请前往：设置 → 辅助功能 → 文字转语音(TTS) → 安装语音包",
+            );
+          }
+        }, 500);
+      }
 
       // iOS Safari 的 bug：长文本播放中途会暂停，需要定时 resume
       if (isIOSRef.current) {
@@ -82,7 +121,7 @@ function TextToSpeech() {
       }
     };
 
-    // iOS 上 cancel() 后需要短暂延迟再 speak，否则引擎卡死
+    // iOS 上 cancel() 后需要短暂延迟再 speak
     if (isIOSRef.current) {
       setTimeout(doSpeak, 100);
     } else {
@@ -136,6 +175,13 @@ function TextToSpeech() {
           播放
         </button>
       </div>
+
+      {/* 错误提示 */}
+      {error && (
+        <div className="mb-4 sm:mb-6 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-600 whitespace-pre-line">{error}</p>
+        </div>
+      )}
 
       {/* 播放状态 */}
       {isSpeaking && (
