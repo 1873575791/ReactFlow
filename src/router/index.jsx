@@ -7,6 +7,7 @@ import ThreeDCardDemo from "../pages/3DCard";
 import MarkdownViewer from "../pages/MarkdownViewer";
 import CalendarPage from "../pages/Calendar";
 import TextToSpeech from "../pages/TextToSpeech";
+import TeamSchedulePage from "../pages/TeamSchedule";
 
 export const routes = [
   {
@@ -53,6 +54,11 @@ export const routes = [
         path: "/tts",
         name: "Text To Speech",
         element: <TextToSpeech />,
+      },
+      {
+        path: "/team-schedule",
+        name: "人员排期",
+        element: <TeamSchedulePage />,
       },
     ],
   },
