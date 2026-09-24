@@ -5,9 +5,7 @@ import ReactFlowPage from "../pages/ReactFlow";
 import FPSGame from "../pages/FPS";
 import ThreeDCardDemo from "../pages/3DCard";
 import MarkdownViewer from "../pages/MarkdownViewer";
-import CalendarPage from "../pages/Calendar";
 import TextToSpeech from "../pages/TextToSpeech";
-import TeamSchedulePage from "../pages/TeamSchedule";
 
 export const routes = [
   {
@@ -47,8 +45,7 @@ export const routes = [
       },
       {
         path: "/calendar",
-        name: "Calendar",
-        element: <CalendarPage />,
+        element: <Navigate to="/md-viewer" replace />,
       },
       {
         path: "/tts",
@@ -57,8 +54,7 @@ export const routes = [
       },
       {
         path: "/team-schedule",
-        name: "人员排期",
-        element: <TeamSchedulePage />,
+        element: <Navigate to="/md-viewer" replace />,
       },
     ],
   },

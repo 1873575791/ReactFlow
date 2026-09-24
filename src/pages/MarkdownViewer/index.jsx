@@ -1,146 +1,211 @@
-import { useState, useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
+import remarkGfm from "remark-gfm";
+import "./markdown-viewer.css";
+
+const sampleMarkdown = `# Markdown 文档
+
+在左侧输入 Markdown，右侧会实时展示渲染结果。
+
+## 常用格式
+
+- **粗体文本**与*斜体文本*
+- [链接](https://www.example.com)
+- 行内代码 \`const ready = true\`
+
+> 这是一段引用内容。
+
+| 功能 | 状态 |
+| --- | --- |
+| 实时预览 | 已开启 |
+| GFM 表格 | 已支持 |
+| 代码高亮 | 已支持 |
+
+\`\`\`javascript
+function greet(name) {
+  return \`Hello, \${name}!\`;
+}
+\`\`\`
+`;
 
 function MarkdownViewer() {
   const [content, setContent] = useState("");
   const [fileName, setFileName] = useState("");
+  const [activePane, setActivePane] = useState("editor");
   const fileInputRef = useRef(null);
 
-  const handleFileChange = useCallback((e) => {
-    const file = e.target.files?.[0];
+  const loadFile = useCallback((file) => {
     if (!file) return;
 
-    if (!file.name.endsWith(".md")) {
-      alert("请选择 .md 格式的文件");
+    if (!file.name.toLowerCase().endsWith(".md")) {
+      window.alert("请选择 .md 格式的文件");
       return;
     }
 
-    setFileName(file.name);
     const reader = new FileReader();
     reader.onload = (event) => {
       setContent(event.target?.result ?? "");
+      setFileName(file.name);
+      setActivePane("preview");
     };
     reader.readAsText(file);
   }, []);
 
-  const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const file = e.dataTransfer.files?.[0];
-    if (!file) return;
+  const handleFileChange = useCallback(
+    (event) => {
+      loadFile(event.target.files?.[0]);
+      event.target.value = "";
+    },
+    [loadFile],
+  );
 
-    if (!file.name.endsWith(".md")) {
-      alert("请选择 .md 格式的文件");
-      return;
-    }
+  const handleDrop = useCallback(
+    (event) => {
+      event.preventDefault();
+      loadFile(event.dataTransfer.files?.[0]);
+    },
+    [loadFile],
+  );
 
-    setFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setContent(event.target?.result ?? "");
-    };
-    reader.readAsText(file);
-  }, []);
-
-  const handleDragOver = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-  }, []);
-
-  const handleReset = useCallback(() => {
+  const handleClear = useCallback(() => {
     setContent("");
     setFileName("");
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    setActivePane("editor");
   }, []);
 
+  const handleSample = useCallback(() => {
+    setContent(sampleMarkdown);
+    setFileName("");
+  }, []);
+
+  const lineCount = content ? content.split("\n").length : 0;
+
   return (
-    <div className="h-full flex flex-col" style={{ colorScheme: "light" }}>
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 px-3 py-3 sm:gap-3 sm:px-6 bg-gray-50 border-b border-gray-200">
-        <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 transition-colors text-sm font-medium">
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+    <div className="markdown-workspace">
+      <header className="markdown-toolbar">
+        <div className="markdown-title">
+          <span className="markdown-mark" aria-hidden="true">
+            M↓
+          </span>
+          <div>
+            <h1>Markdown 预览</h1>
+            <p>{fileName || "未命名文档"}</p>
+          </div>
+        </div>
+
+        <div className="markdown-actions">
+          <button
+            type="button"
+            className="action-button"
+            onClick={handleSample}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          选择 Markdown 文件
+            载入示例
+          </button>
+          <button
+            type="button"
+            className="action-button"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            导入 .md
+          </button>
+          <button
+            type="button"
+            className="action-button action-button-danger"
+            onClick={handleClear}
+            disabled={!content}
+          >
+            清空
+          </button>
           <input
             ref={fileInputRef}
             type="file"
-            accept=".md"
+            accept=".md,text/markdown"
             onChange={handleFileChange}
-            className="hidden"
+            hidden
           />
-        </label>
+        </div>
+      </header>
 
-        {fileName && (
-          <>
-            <span className="text-sm text-gray-600 truncate max-w-xs">
-              {fileName}
+      <div className="pane-switcher" aria-label="视图切换">
+        <button
+          type="button"
+          className={activePane === "editor" ? "is-active" : ""}
+          onClick={() => setActivePane("editor")}
+        >
+          编辑
+        </button>
+        <button
+          type="button"
+          className={activePane === "preview" ? "is-active" : ""}
+          onClick={() => setActivePane("preview")}
+        >
+          预览
+        </button>
+      </div>
+
+      <main className="markdown-panes">
+        <section
+          className={`markdown-pane editor-pane ${
+            activePane === "editor" ? "is-mobile-active" : ""
+          }`}
+          onDrop={handleDrop}
+          onDragOver={(event) => event.preventDefault()}
+        >
+          <div className="pane-heading">
+            <span>Markdown 输入</span>
+            <span>
+              {lineCount} 行 · {content.length} 字符
             </span>
-            <button
-              onClick={handleReset}
-              className="text-sm text-gray-400 hover:text-red-500 transition-colors"
-            >
-              清除
-            </button>
-          </>
-        )}
-      </div>
+          </div>
+          <textarea
+            value={content}
+            onChange={(event) => {
+              setContent(event.target.value);
+              setFileName("");
+            }}
+            placeholder={"在这里输入 Markdown 内容...\n\n# 标题\n\n开始编写你的文档。"}
+            aria-label="Markdown 内容"
+            spellCheck="false"
+          />
+        </section>
 
-      {/* Content Area */}
-      <div className="flex-1 overflow-auto bg-white">
-        {!content ? (
-          <div
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            className="h-full flex items-center justify-center"
-          >
-            <div className="flex flex-col items-center gap-4 text-gray-400">
-              <svg
-                className="w-16 h-16"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-              <p className="text-base text-center px-4 sm:text-lg">
-                <span className="hidden sm:inline">拖拽或点击上方按钮选择 .md 文件</span>
-                <span className="sm:hidden">点击上方按钮选择 .md 文件</span>
-              </p>
-            </div>
+        <section
+          className={`markdown-pane preview-pane ${
+            activePane === "preview" ? "is-mobile-active" : ""
+          }`}
+        >
+          <div className="pane-heading">
+            <span>文档预览</span>
+            <span>实时渲染</span>
           </div>
-        ) : (
-          <div className="max-w-4xl mx-auto px-4 py-5 sm:px-8 sm:py-6">
-            <article className="prose prose-slate prose-headings:font-semibold prose-a:text-indigo-600 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-gray-900 prose-pre:text-gray-100 max-w-none text-slate-800">
-              <Markdown
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeHighlight]}
-              >
-                {content}
-              </Markdown>
-            </article>
+          <div className="preview-scroll">
+            {content.trim() ? (
+              <article className="markdown-body">
+                <Markdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeHighlight]}
+                  components={{
+                    a: ({ children, ...props }) => (
+                      <a {...props} target="_blank" rel="noreferrer">
+                        {children}
+                      </a>
+                    ),
+                  }}
+                >
+                  {content}
+                </Markdown>
+              </article>
+            ) : (
+              <div className="empty-preview">
+                <span aria-hidden="true">M↓</span>
+                <strong>预览区域</strong>
+                <p>输入 Markdown 内容后，渲染结果会显示在这里。</p>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </section>
+      </main>
     </div>
   );
 }

@@ -1,20 +1,26 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { routes } from "../router";
+
+const navItems = [
+  { path: "/home", name: "Home" },
+  { path: "/reactflow", name: "ReactFlow" },
+  { path: "/fps", name: "FPS Game" },
+  { path: "/3dcard", name: "3D Card" },
+  { path: "/md-viewer", name: "MD Viewer" },
+  { path: "/tts", name: "Text To Speech" },
+];
 
 function Layout() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const navItems = routes[0].children.filter((route) => route.name);
-
   const closeMenu = () => setIsMenuOpen(false);
 
   return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900">
+    <div className="h-screen flex flex-col bg-white dark:bg-gray-900">
       <header>
         <nav className="relative flex items-center justify-between px-4 py-4 bg-[#1a1a2e] border-b border-gray-700 sm:px-6">
           {/* 桌面端横向导航 */}
-          <div className="hidden sm:flex sm:gap-5">
+          <div className="hidden lg:flex lg:gap-3">
             {navItems.map((route) => (
               <NavLink
                 key={route.path}
@@ -32,7 +38,7 @@ function Layout() {
           </div>
 
           {/* 移动端品牌占位 */}
-          <span className="text-white font-semibold sm:hidden">Demo</span>
+          <span className="text-white font-semibold lg:hidden">Demo</span>
 
           {/* 移动端汉堡按钮 */}
           <button
@@ -40,7 +46,7 @@ function Layout() {
             onClick={() => setIsMenuOpen((open) => !open)}
             aria-label="切换导航菜单"
             aria-expanded={isMenuOpen}
-            className="flex items-center justify-center w-10 h-10 rounded-md text-white hover:bg-gray-700 transition-colors sm:hidden"
+            className="flex items-center justify-center w-10 h-10 rounded-md text-white hover:bg-gray-700 transition-colors lg:hidden"
           >
             {isMenuOpen ? (
               <svg
@@ -71,7 +77,7 @@ function Layout() {
 
           {/* 移动端展开菜单 */}
           {isMenuOpen && (
-            <div className="absolute top-full left-0 right-0 z-50 flex flex-col gap-1 px-4 py-3 bg-[#1a1a2e] border-b border-gray-700 shadow-lg sm:hidden">
+            <div className="absolute top-full left-0 right-0 z-50 flex flex-col gap-1 px-4 py-3 bg-[#1a1a2e] border-b border-gray-700 shadow-lg lg:hidden">
               {navItems.map((route) => (
                 <NavLink
                   key={route.path}
@@ -91,7 +97,7 @@ function Layout() {
           )}
         </nav>
       </header>
-      <main className="h-[calc(100vh-73px)]">
+      <main className="min-h-0 flex-1 overflow-auto">
         <Outlet />
       </main>
     </div>
